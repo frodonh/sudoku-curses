@@ -174,16 +174,21 @@ void Grid::operator=(const Grid &source) {
 	_dim2=source._dim2;
 	_filled=source._filled;
 	size_t pdim=_dim2*_dim2;
-	_cells=new Cell*[pdim];
-	for (size_t i=0;i<_dim2;++i) for (size_t j=0;j<_dim2;++j) _cells[i*_dim2+j]=new Cell(*(source._cells[i*_dim2+j]));
-	_alternatives=new size_t[pdim*3];
-	for (size_t i=0;i<pdim*3;++i) _alternatives[i]=source._alternatives[i];
+	if (source._cells!=0) {
+		_cells=new Cell*[pdim];
+		for (size_t i=0;i<_dim2;++i) for (size_t j=0;j<_dim2;++j) _cells[i*_dim2+j]=new Cell(*(source._cells[i*_dim2+j]));
+	} else _cells=0;
+	if (source._alternatives!=0) {
+		_alternatives=new size_t[pdim*3];
+		for (size_t i=0;i<pdim*3;++i) _alternatives[i]=source._alternatives[i];
+	} else _alternatives=0;
 }
 
 
-void Grid::set_value(size_t prow,size_t pcolumn,elem_t pvalue) {
+void Grid::set_value(size_t prow,size_t pcolumn,elem_t pvalue,bool pfixed) {
 	Cell* cell=(*this)(prow,pcolumn);
 	cell->value=pvalue;
+	cell->fixed=pfixed;
 	_filled++;
 	if (cell->possible!=0) {
 		for (size_t t=0;t<3;++t) {
@@ -417,7 +422,7 @@ void Grid::save() const {
 	for (size_t i=0;i<_dim2;++i) for (size_t j=0;j<_dim2;++j) _saved._cells[i*_dim2+j]=new Cell(*(_cells[i*_dim2+j]));
 }
 
-Grid Grid::generate(size_t dimension,size_t difficulty,Grid *solution,bool pfixed) {
+Grid Grid::generate(size_t dimension,size_t difficulty,Grid *solution) {
 	// Generate a full valid grid
 	Grid source(dimension);
 	source.fill();
@@ -473,7 +478,7 @@ Cell::Cell(elem_t pvalue,size_t pnpossible):value(pvalue),npossible(pnpossible),
 	for (size_t i=0;i<pnpossible;++i) possible[i]=true;
 }
 
-Cell::Cell(const Cell& source):value(source.value),npossible(source.npossible),_dim2(source._dim2) {
+Cell::Cell(const Cell& source):value(source.value),npossible(source.npossible),fixed(source.fixed),_dim2(source._dim2) {
 	if (source.possible==0) possible=0; else {
 		possible=new bool[_dim2];
 		for (size_t i=0;i<_dim2;++i) possible[i]=source.possible[i];

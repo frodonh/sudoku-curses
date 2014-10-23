@@ -19,6 +19,7 @@
 #include <iostream>
 #include <fstream>
 #include "objects.h"
+#include "gui_curses.h"
 
 using namespace std;
 
@@ -45,11 +46,13 @@ int main(int argc,char **argv) {
  */
 
 
-	Grid grid=Grid::generate(3,0);
-	cout << "Grille :\n" << grid;
-	cout << "\nSolution :\n";
-	grid.solve(Grid::FIND_ONE);
+/* 	Grid grid=Grid::generate(3,0);
+ * 	cout << "Grille :\n" << grid;
+ * 	cout << "\nSolution :\n";
+ * 	grid.solve(Grid::FIND_ONE);
+ */
 
-
+	CursesGui gui;
+	gui.run();
 	return 0;
 }

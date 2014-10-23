@@ -6,16 +6,16 @@
  *    Description:  Platform-dependant configuration options
  *
  *        Version:  1.0
- *        Created:  28/11/2012 16:51
+ *        Created:  22/10/2014 20:16
  *       Revision:  none
  *       Compiler:  g++
  *
- *         Author:  François Hissel (), francois.hissel@developpement-durable.gouv.fr
- *        Company:  CETMEF
+ *         Author:  François Hissel
+ *        Company:  
  *
  * =====================================================================================
  */
 
-#cmakedefine HAVE_QT
+#cmakedefine HAVE_CURSES
 #cmakedefine DEBUG_LEVEL ${DEBUG_LEVEL}
 

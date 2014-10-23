@@ -9,8 +9,19 @@ if (DOXYGEN_FOUND)
 	add_custom_target(doc ${DOXYGEN_EXECUTABLE} doxyconf comment "Generating API documentation with Doxygen" verbatim)
 endif (DOXYGEN_FOUND)
 
+#Find NCurses
+FIND_PACKAGE(Curses)
+if (NOT USE_CURSES)
+	message("Curses support deactivated. Text interface will not be available.")
+elseif (NOT CURSES_FOUND)
+	message("Curses library unavailable. Text interface will be deactivated.")
+else (NOT USE_CURSES)
+	set (HAVE_CURSES 1)
+endif (NOT USE_CURSES)
+
 #Options
 set(DEBUG_LEVEL 0)
+OPTION(USE_CURSES "Compile with Ncurses support (if available) and enables GUI" ON)
 
 #General configuration
 SET(CMAKE_CXX_FLAGS "-Wall -Werror -std=c++11")
@@ -56,3 +67,6 @@ file(GLOB source_files *.cpp *.h)
 add_executable (sudoku ${source_files})
 
 target_link_libraries(sudoku)
+if (CURSES_FOUND)
+	target_link_libraries(sudoku ${CURSES_LIBRARY})
+endif (CURSES_FOUND)
