@@ -21,6 +21,7 @@
 #include <array>
 #include <utility>
 #include <ctype.h>
+#include <wchar.h>
 #include "gui_curses.h"
 
 using namespace std;
@@ -31,26 +32,45 @@ void CursesGui::draw_structure(const Grid &grid) {
 	size_t sx;
 	xspace=(grid.dim()<=3)?1:0;
 	xmin=(xmax-grid.dim2()*2*(1+xspace)-1)/2;
-	mvaddch(0,xmin,ACS_ULCORNER);
+	mvaddwstr(0,xmin,L"┏");
 	sx=2*xspace+1;
 	for (size_t j=0;j<grid.dim2();++j) {
-		for (size_t k=0;k<sx;++k) addch(ACS_HLINE);
-		if (j==grid.dim2()-1) addch(ACS_URCORNER); else addch(ACS_TTEE);
+		for (size_t k=0;k<sx;++k) addwstr(L"━");
+		if (j==grid.dim2()-1) addwstr(L"┓"); else {
+			if ((j+1) % grid.dim()==0) addwstr(L"┳"); else addwstr(L"┯");
+		}
 	}
 	for (size_t i=0;i<grid.dim2();++i) {
 		for (size_t j=1;j<=sx;++j) 
-			for (size_t k=0;k<=grid.dim2();++k) mvaddch(i*(sx+1)+j,xmin+k*(sx+1),ACS_VLINE);
+			for (size_t k=0;k<=grid.dim2();++k) {
+				if (k % grid.dim()==0) mvaddwstr(i*(sx+1)+j,xmin+k*(sx+1),L"┃");
+				else mvaddwstr(i*(sx+1)+j,xmin+k*(sx+1),L"│");
+			}
 		if (i==grid.dim2()-1) {
-			mvaddch((i+1)*(sx+1),xmin,ACS_LLCORNER);
+			mvaddwstr((i+1)*(sx+1),xmin,L"┗");
 			for (size_t j=0;j<grid.dim2();++j) {
-				for (size_t k=0;k<sx;++k) addch(ACS_HLINE);
-				if (j==grid.dim2()-1) addch(ACS_LRCORNER); else addch(ACS_BTEE);
+				for (size_t k=0;k<sx;++k) addwstr(L"━");
+				if (j==grid.dim2()-1) addwstr(L"┛"); else {
+					if ((j+1) % grid.dim()==0) addwstr(L"┻"); else addwstr(L"┷");
+				}
 			}
 		} else {
-			mvaddch((i+1)*(sx+1),xmin,ACS_LTEE);
-			for (size_t j=0;j<grid.dim2();++j) {
-				for (size_t k=0;k<sx;++k) addch(ACS_HLINE);
-				if (j==grid.dim2()-1) addch(ACS_RTEE); else addch(ACS_PLUS);
+			if ((i+1) % grid.dim()==0) {
+				mvaddwstr((i+1)*(sx+1),xmin,L"┣"); 
+				for (size_t j=0;j<grid.dim2();++j) {
+					for (size_t k=0;k<sx;++k) addwstr(L"━");
+					if (j==grid.dim2()-1) addwstr(L"┫"); else {
+						if ((j+1) % grid.dim()==0) addwstr(L"╋"); else addwstr(L"┿");
+					}
+				}
+			} else {
+				mvaddwstr((i+1)*(sx+1),xmin,L"┠");
+				for (size_t j=0;j<grid.dim2();++j) {
+					for (size_t k=0;k<sx;++k) addwstr(L"─");
+					if (j==grid.dim2()-1) addwstr(L"┨"); else {
+						if ((j+1) % grid.dim()==0) addwstr(L"╂"); else addwstr(L"┼");
+					}
+				}
 			}
 		}
 	}
@@ -117,10 +137,12 @@ void CursesGui::display_menu_line(int selected) {
 
 void CursesGui::run() {
 	// Init screen
+	setlocale(LC_ALL,"");
 	initscr();
 	raw();
 	keypad(stdscr,TRUE);
 	noecho();
+	set_escdelay(100);
 	curs_set(0);
 	start_color();
 	init_pair(1,COLOR_YELLOW,COLOR_BLUE);
@@ -153,7 +175,7 @@ void CursesGui::run() {
 		// Prompt for action
 		ch=getch();
 		switch (ch) {
-			case KEY_RIGHT:
+			case 'l':case KEY_RIGHT:
 				if (menu_mode) {
 					selected=(selected+1)%menu.size(); 
 					display_menu_line(selected);
@@ -164,7 +186,7 @@ void CursesGui::run() {
 					draw_element(maingrid,si,sj);
 				}
 				break;
-			case KEY_LEFT:
+			case 'h':case KEY_LEFT:
 				if (menu_mode) {
 					selected=(selected==0)?(menu.size()-1):(selected-1);
 					display_menu_line(selected);
@@ -175,7 +197,7 @@ void CursesGui::run() {
 					draw_element(maingrid,si,sj);
 				}
 				break;
-			case KEY_UP:
+			case 'k':case KEY_UP:
 				if (!menu_mode) {
 					size_t oi=si;
 					si=(si==0)?(maingrid.dim2()-1):(si-1);
@@ -183,7 +205,7 @@ void CursesGui::run() {
 					draw_element(maingrid,si,sj);
 				}
 				break;
-			case KEY_DOWN:
+			case 'j':case KEY_DOWN:
 				if (!menu_mode) {
 					size_t oi=si;
 					si=(si+1)%maingrid.dim2();
@@ -196,9 +218,14 @@ void CursesGui::run() {
 					if (selected>=0) ch=menu[selected].result;
 				}
 				break;
-			case '\t':
-				menu_mode=!menu_mode;
-				selected=menu_mode?0:-1;
+			case 27:
+				nodelay(stdscr,true);
+				chh=getch();
+				if (chh==-1) {
+					menu_mode=!menu_mode;
+					selected=menu_mode?0:-1;
+				}
+				nodelay(stdscr,false);
 				break;
 			default:
 				if (menu_mode) {
@@ -213,10 +240,11 @@ void CursesGui::run() {
 					}
 				} else {
 					ch=toupper(ch);
-					if ((ch>='0' && ch<='9') || (maingrid.dim()==4 && ch>='A' && ch<='F')) {
+					if (ch==KEY_DC || (ch>='0' && ch<='9') || (maingrid.dim()==4 && ch>='A' && ch<='F')) {
 						Cell *cell=maingrid(si,sj);
 						if (!cell->fixed) {
-							if (ch>='0' && ch<='9') maingrid(si,sj)->value=ch-'0';
+							if (ch==KEY_DC) maingrid(si,sj)->value=0;
+							else if (ch>='0' && ch<='9') maingrid(si,sj)->value=ch-'0';
 							else maingrid(si,sj)->value=ch-'A'+10;
 							draw_element(maingrid,si,sj);
 						}
@@ -260,14 +288,21 @@ void CursesGui::run() {
 				chh=0;
 				while (chh!='3' && chh!='4') chh=getch();
 				si=chh-'0';
-				savi=21;
-				while (savi<0 || savi>20) {
-					mvprintw(ymax-1,0,"Difficulty (0 is harder, 20 is easier) ?");
+				savi=22;
+				while (savi<0 || savi>21) {
+					mvprintw(ymax-1,0,"Difficulty (0 is harder, 20 is easier, nothing for an empty grid) ?");
 					echo();
-					scanw("%i",&savi);
+					char buf[3];
+					getnstr(buf,2);
+					if (buf[0]==0) savi=21;
+					else {
+						sscanf(buf,"%lu",&savi);
+						if (savi==21) savi=22;
+					}
 					noecho();
 				}
-				maingrid=Grid::generate(chh-'0',savi,&solution);
+				if (savi==21) maingrid=Grid(si);
+				else maingrid=Grid::generate(si,savi,&solution);
 				draw_structure(maingrid);
 				si=0;sj=0;
 				for (size_t i=0;i<maingrid.dim2();++i) for (size_t j=0;j<maingrid.dim2();++j) draw_element(maingrid,i,j);

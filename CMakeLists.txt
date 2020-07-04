@@ -10,6 +10,7 @@ if (DOXYGEN_FOUND)
 endif (DOXYGEN_FOUND)
 
 #Find NCurses
+set (CURSES_NEED_WIDE TRUE)
 FIND_PACKAGE(Curses)
 if (NOT USE_CURSES)
 	message("Curses support deactivated. Text interface will not be available.")
