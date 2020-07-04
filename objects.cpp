@@ -38,7 +38,7 @@ std::mt19937 rgenerator(rdevice());
 /**************************************************************************/
 const char* SudokuException::what() const throw() {
 	switch (code) {
-		case FORMAT_ERROR:return ("Incorrect format: "+message).c_str();
+		case FORMAT_ERROR:return "Incorrect format.";
 		default:return message.c_str();
 	}
 }

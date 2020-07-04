@@ -20,13 +20,16 @@
 #include <string>
 #include <array>
 #include <utility>
+#include <ctype.h>
 #include "gui_curses.h"
 
 using namespace std;
 
 void CursesGui::draw_structure(const Grid &grid) {
+	move(0,0);
+	clrtobot();
 	size_t sx;
-	xspace=(grid.dim()<=4)?1:0;
+	xspace=(grid.dim()<=3)?1:0;
 	xmin=(xmax-grid.dim2()*2*(1+xspace)-1)/2;
 	mvaddch(0,xmin,ACS_ULCORNER);
 	sx=2*xspace+1;
@@ -82,14 +85,15 @@ void CursesGui::display_string(string text) {
 		j=i;
 		while (j<text.length() && text[j]!='&') ++j;
 		printw(text.substr(i,j-i).c_str());
-		if (text[j]=='&' && j<text.length()-1) {
-			if (text[j+1]=='&') addch(text[j]); else {
-				attron(A_STANDOUT);
+		if (text[j]=='&') {
+			if (j==text.length()-1 || text[j+1]=='&') addch(text[j]); else {
+				attron(A_BOLD);
 				addch(text[j+1]);
-				attroff(A_STANDOUT);
+				attroff(A_BOLD);
 			}
-			i+=2;
+			j+=2;
 		}
+		i=j;
 	}
 }
 
@@ -103,9 +107,11 @@ void CursesGui::display_menu_line(int selected) {
 		if ((int)i==selected) attroff(COLOR_PAIR(1));
 		for (size_t j=0;j<menu_spacing;++j) addch(' ');
 	}
-	move(ymax-1,0);
-	clrtoeol();
-	if (selected>=0) printw(menu[selected].description.c_str());
+	if (selected>=0) {
+		move(ymax-1,0);
+		clrtoeol();
+		printw(menu[selected].description.c_str());
+	}
 	refresh();
 }
 
@@ -137,8 +143,11 @@ void CursesGui::run() {
 	int selected=-1;
 	bool menu_mode=false;
 	bool quit=false;
-	bool ok;
+	bool ok,found;
 	int ch=0;
+	int chh;
+	size_t min;
+	size_t savi,savj;
 	while (!quit) {
 		display_menu_line(selected);
 		// Prompt for action
@@ -192,20 +201,76 @@ void CursesGui::run() {
 				selected=menu_mode?0:-1;
 				break;
 			default:
-				size_t k=0;
-				ok=false;
-				while (!ok && k<menu.size()) {
-					if (menu[k].hotkey==ch) {
-						ok=true;
-						ch=menu[k].result;
+				if (menu_mode) {
+					size_t k=0;
+					ok=false;
+					while (!ok && k<menu.size()) {
+						if (menu[k].hotkey==ch) {
+							ok=true;
+							ch=menu[k].result;
+						}
+						++k;
 					}
-					++k;
+				} else {
+					ch=toupper(ch);
+					if ((ch>='0' && ch<='9') || (maingrid.dim()==4 && ch>='A' && ch<='F')) {
+						Cell *cell=maingrid(si,sj);
+						if (!cell->fixed) {
+							if (ch>='0' && ch<='9') maingrid(si,sj)->value=ch-'0';
+							else maingrid(si,sj)->value=ch-'A'+10;
+							draw_element(maingrid,si,sj);
+						}
+					}
 				}
 		}
 		// Process menu action
 		switch (ch) {
 			case 'q':
 				quit=true;
+				break;
+			case 's':
+				if (solution.dim()==0) {
+					solution=Grid(maingrid.dim());
+					for (size_t i=0;i<maingrid.dim2();++i) for (size_t j=0;j<maingrid.dim2();++j) solution.set_value(i,j,maingrid(i,j)->value);
+					found=solution.fill();
+				} else found=true;
+				if (found) {
+					maingrid=solution;
+					for (size_t i=0;i<maingrid.dim2();++i) for (size_t j=0;j<maingrid.dim2();++j) if (!maingrid(i,j)->fixed) draw_element(maingrid,i,j);
+				}
+				else mvprintw(ymax-1,0,"No solution found!");
+				break;
+			case 'c':
+				if (solution.dim()==0) {
+					solution=maingrid;
+					solution.fill();
+				}
+				min=solution.dim2();
+				for (size_t i=0;i<maingrid.dim2();++i) for (size_t j=0;j<maingrid.dim2();++j) if (maingrid(i,j)->npossible<min && maingrid(i,j)->npossible>0) {
+					min=maingrid(i,j)->npossible;
+					savi=i;savj=j;
+				}
+				if (min<solution.dim2()) {
+					maingrid.set_value(savi,savj,solution(savi,savj)->value);
+					draw_element(maingrid,savi,savj);
+				}
+				break;
+			case 'n':
+				mvprintw(ymax-1,0,"Dimension (3 or 4) ?");
+				chh=0;
+				while (chh!='3' && chh!='4') chh=getch();
+				si=chh-'0';
+				savi=21;
+				while (savi<0 || savi>20) {
+					mvprintw(ymax-1,0,"Difficulty (0 is harder, 20 is easier) ?");
+					echo();
+					scanw("%i",&savi);
+					noecho();
+				}
+				maingrid=Grid::generate(chh-'0',savi,&solution);
+				draw_structure(maingrid);
+				si=0;sj=0;
+				for (size_t i=0;i<maingrid.dim2();++i) for (size_t j=0;j<maingrid.dim2();++j) draw_element(maingrid,i,j);
 				break;
 		}
 	}
